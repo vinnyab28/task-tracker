@@ -2,13 +2,13 @@ import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 dayjs.extend(isoWeek);
 
-import type { RecordEntry } from "@/pages/AddRecord";
+import type { DayRecordEntry } from "@/types/types";
 import type { PeriodType } from "@/utils/types";
 
 type FormattedData = { name: string; value: number };
 
 export const transformTaskData = (
-    records: { [date: string]: RecordEntry[] },
+    records: { [date: string]: DayRecordEntry },
     selectedDate: dayjs.Dayjs,
     period: PeriodType
 ): FormattedData[] => {

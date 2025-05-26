@@ -1,6 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
 import { Box, Button, Flex, IconButton, Separator, Text, VStack } from "@chakra-ui/react";
-import { LuLogOut, LuMoon, LuSun } from "react-icons/lu";
+import { LuLayoutDashboard, LuList, LuLogOut, LuMoon, LuSun } from "react-icons/lu";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useColorMode, useColorModeValue } from "../ui/color-mode";
 
@@ -10,9 +10,9 @@ const Sidebar = () => {
 	const navigate = useNavigate();
 
 	const navItems = [
-		{ label: "Dashboard", path: "/dashboard" },
-		{ label: "Task Manager", path: "/taskManager" },
-		// { label: "Profile", path: "/profile" },
+		{ label: "Dashboard", path: "/dashboard", icon: <LuLayoutDashboard /> },
+		{ label: "Task Manager", path: "/taskManager", icon: <LuList /> },
+		// { label: "Goal Manager", path: "/goalManager", icon: <LuGoal /> },
 	];
 
 	return (
@@ -29,7 +29,7 @@ const Sidebar = () => {
 						<NavLink key={item.path} to={item.path}>
 							{({ isActive }) => (
 								<Button justifyContent="flex-start" w="100%" variant={isActive ? "solid" : "ghost"}>
-									{item.label}
+									{item.icon} {item.label}
 								</Button>
 							)}
 						</NavLink>

@@ -1,242 +1,130 @@
-import TimelineView from "@/components/ui/timeline-view";
 import { toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/firebase";
-import { Box, Button, createListCollection, Field, Flex, Input, Portal, Select, Separator, Text, VStack } from "@chakra-ui/react";
+import useTasks from "@/hooks/useTasks";
+import type { DayLogForm, DayRecordEntry, TaskLogItem } from "@/types/types";
+import { Button, createListCollection, Field, Flex, Grid, GridItem, Input, Portal, Select, Separator, Textarea, VStack } from "@chakra-ui/react";
 import dayjs from "dayjs";
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
-import Layout from "../components/Layout/Layout";
-import type { TaskItem } from "./TaskManager";
-
-const HOURS = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
-const MINUTES = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, "0"));
-
-export interface RecordEntry {
-	task: TaskItem;
-	from: string;
-	duration?: string;
-	description?: string;
-}
-
-const startDayTimes = createListCollection({
-	items: [
-		{ label: "4:00 AM", value: "4:00" },
-		{ label: "5:00 AM", value: "5:00" },
-		{ label: "6:00 AM", value: "6:00" },
-		{ label: "7:00 AM", value: "7:00" },
-		{ label: "8:00 AM", value: "8:00" },
-		{ label: "9:00 AM", value: "9:00" },
-		{ label: "10:00 AM", value: "10:00" },
-	],
-});
-
-const endDayTimes = createListCollection({
-	items: [
-		{ label: "18:00 PM", value: "18:00" },
-		{ label: "19:00 PM", value: "19:00" },
-		{ label: "20:00 PM", value: "20:00" },
-		{ label: "21:00 PM", value: "21:00" },
-		{ label: "22:00 PM", value: "22:00" },
-		{ label: "23:00 PM", value: "23:00" },
-		{ label: "23:59 PM", value: "23:59" },
-	],
-});
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 
 const AddRecord = () => {
 	const { user } = useAuth();
 	const [date, setDate] = useState(() => dayjs().format("YYYY-MM-DD"));
-	const [tasks, setTasks] = useState<TaskItem[]>([]);
-	const [entries, setEntries] = useState<RecordEntry[]>([]);
+	const { tasks: userTasks } = useTasks();
 
-	const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
-	const [selectedStartTime, setSelectedStartTime] = useState<string[]>(["4:00"]);
-	const [selectedEndTime, setSelectedEndTime] = useState<string[]>(["21:00"]);
-	const [fromHour, setFromHour] = useState<string[]>([]);
-	const [fromMinute, setFromMinute] = useState<string[]>([]);
-	const [description, setDescription] = useState("");
-
-	const addDurations = useCallback(
-		(list: RecordEntry[]): RecordEntry[] => {
-			return list.map((entry, index) => {
-				const start = dayjs(`${date}T${entry.from}`);
-
-				let end: dayjs.Dayjs;
-				if (index === 0 && list.length > 1) {
-					// Start of first entry cannot be before selectedStartTime
-					const adjustedStart = dayjs(`${date}T${selectedStartTime[0]}`);
-					if (start.isBefore(adjustedStart)) {
-						entry = { ...entry, from: selectedStartTime[0] };
-					}
-				}
-
-				if (index === list.length - 1) {
-					end = dayjs(`${date}T${selectedEndTime[0]}`);
-				} else {
-					end = dayjs(`${date}T${list[index + 1].from}`);
-				}
-
-				const diff = end.diff(start, "minute");
-				if (diff <= 0) return { ...entry, duration: "" };
-
-				const hours = Math.floor(diff / 60);
-				const minutes = diff % 60;
-				return {
-					...entry,
-					duration: `${hours ? `${hours}h ` : ""}${minutes}m`,
-				};
-			});
+	const {
+		register,
+		handleSubmit,
+		formState: { errors },
+		reset,
+		setValue,
+	} = useForm<DayLogForm>({
+		defaultValues: {
+			selectedDate: date,
+			dayStart: "04:00",
+			dayEnd: "20:00",
 		},
-		[date, selectedStartTime, selectedEndTime]
-	);
+	});
+	const [dayRecord, setDayRecord] = useState<DayRecordEntry | null>(null);
 
 	useEffect(() => {
-		const loadTasks = async () => {
-			if (!user) return;
-
-			try {
-				const taskSnapshot = await getDocs(collection(db, "users", user.uid, "tasks"));
-				const fetchedTasks: TaskItem[] = taskSnapshot.docs.map((doc) => ({ ...(doc.data() as TaskItem) }));
-				setTasks(fetchedTasks.sort((a, b) => a.taskName.localeCompare(b.taskName)));
-			} catch (e) {
-				console.error("Error loading tasks:", e);
-				toaster.error({ title: "Failed to load tasks." });
-			}
-		};
-		loadTasks();
-	}, [user]);
-
-	useEffect(() => {
-		const loadRecordsForDate = async (selectedDate: string) => {
-			const docRef = doc(db, "users", user!.uid, "records", `${selectedDate}`);
+		if (!user || !date) return;
+		const loadRecordsForDate = async () => {
+			const docRef = doc(db, "users", user!.uid, "records", `${date}`);
 			const docSnap = await getDoc(docRef);
 			if (docSnap.exists()) {
-				const sorted = (docSnap.data().entries || []).sort((a: RecordEntry, b: RecordEntry) => (dayjs(`${date}T${a.from}`).isBefore(dayjs(`${date}T${b.from}`)) ? -1 : 1));
-				setEntries(addDurations(sorted));
+				setDayRecord(docSnap.data() as DayRecordEntry);
 			} else {
-				setEntries([]);
+				setDayRecord(null);
 			}
 		};
-		if (user) loadRecordsForDate(date);
-	}, [date, user, addDurations]);
+		loadRecordsForDate();
+	}, [user, date]);
 
-	const saveRecordsForDate = async (selectedDate: string, updated: RecordEntry[]) => {
-		const sorted = updated.sort((a, b) => (dayjs(`${date}T${a.from}`).isBefore(dayjs(`${date}T${b.from}`)) ? -1 : 1));
-		const withDurations = addDurations(sorted);
-		await setDoc(doc(db, "users", user!.uid, "records", `${selectedDate}`), {
-			userId: user?.uid,
-			date: selectedDate,
-			entries: withDurations,
+	useEffect(() => {
+		setValue("selectedDate", date);
+	}, [date, setValue]);
+
+	const saveRecordsForDate = async (selectedDate: string, dayRecord: DayRecordEntry) => {
+		try {
+			await setDoc(doc(db, "users", user!.uid, "records", `${selectedDate}`), dayRecord);
+			setDayRecord(dayRecord);
+			toaster.success({ title: "Add log successfully" });
+		} catch (e: any) {
+			toaster.error({ title: e.message ?? "Error occurred!" });
+		}
+	};
+
+	const handleAdd = (values: DayLogForm) => {
+		const newTask: TaskLogItem = { taskId: values.taskId, startTime: values.taskStartTime, comments: values.comments };
+		const currentTasks: TaskLogItem[] = dayRecord?.tasks.slice() ?? [];
+
+		// const updatedTasks: TaskLogItem[] = [...currentTasks, newTask].sort((taskA, taskB) => (taskA.startTime.localeCompare(taskB.startTime) ? 1 : -1));
+		const updatedTasks: TaskLogItem[] = [...currentTasks, newTask].sort((a, b) => {
+			// Use dayjs to parse the startTime strings
+			const aTime = dayjs(`${values.selectedDate} ${a.startTime}`);
+			const bTime = dayjs(`${values.selectedDate} ${b.startTime}`);
+
+			// Compare the dayjs objects and return the appropriate value for sorting
+			if (aTime.isBefore(bTime)) return -1;
+			if (aTime.isAfter(bTime)) return 1;
+			return 0;
 		});
-		setEntries(withDurations);
-	};
 
-	const resetInputs = () => {
-		setSelectedTaskIds([]);
-		setFromHour([]);
-		setFromMinute([]);
-		setDescription("");
-	};
+		const updatedRecords: DayRecordEntry = { dayStart: values.dayStart, dayEnd: values.dayEnd, tasks: [...updatedTasks] };
 
-	const handleAdd = () => {
-		if (!selectedTaskIds.length || !fromHour.length || !fromMinute.length) {
-			toaster.create({ title: "Please fill all required fields.", type: "warning" });
-			return;
-		}
-		const selectedTask = tasks.find((t) => t._id === selectedTaskIds[0]);
-		if (!selectedTask) {
-			toaster.create({ title: "Invalid task selected.", type: "error" });
-			return;
-		}
-		const from = `${fromHour[0]}:${fromMinute[0]}`;
-		const newEntry: RecordEntry = { task: selectedTask, from, description };
-		saveRecordsForDate(date, [...entries, newEntry]);
-		resetInputs();
-	};
-
-	const handleDelete = (index: number) => {
-		const updated = entries.filter((_, i) => i !== index);
-		saveRecordsForDate(date, updated);
+		saveRecordsForDate(values.selectedDate, updatedRecords);
+		reset({
+			selectedDate: date,
+			dayStart: values.dayStart,
+			dayEnd: values.dayEnd,
+			taskId: "",
+			taskStartTime: "",
+			comments: "",
+		});
 	};
 
 	const taskCollection = createListCollection({
-		items: tasks.map((task) => ({ value: task._id, label: task.taskName })),
-	});
-
-	const hourValues = createListCollection({
-		items: HOURS.map((h) => ({ label: h, value: h })),
-	});
-
-	const minuteValues = createListCollection({
-		items: MINUTES.map((m) => ({ label: m, value: m })),
+		items: userTasks.map((task) => ({ value: task._id, label: task.taskName })),
 	});
 
 	return (
-		<Layout>
+		<form
+			onSubmit={handleSubmit(handleAdd, () => {
+				toaster.error({ title: "Invalid Form" });
+			})}
+		>
 			<VStack align="stretch" w="full">
-				<Box p="4" borderWidth="1px" borderColor="border.disabled" color="fg.disabled">
-					<Flex gap="6">
-						<Field.Root>
-							<Field.Label>Date</Field.Label>
-							<Input type="date" max={dayjs().format("YYYY-MM-DD")} value={date} onChange={(e) => setDate(e.target.value)} />
-						</Field.Root>
-						<Field.Root>
-							<Select.Root collection={startDayTimes} value={selectedStartTime} onValueChange={({ value }) => setSelectedStartTime(value)}>
-								<Select.HiddenSelect />
-								<Select.Label>Select Start Time</Select.Label>
-								<Select.Control>
-									<Select.Trigger>
-										<Select.ValueText placeholder="Select Start Time" />
-									</Select.Trigger>
-									<Select.IndicatorGroup>
-										<Select.Indicator />
-									</Select.IndicatorGroup>
-								</Select.Control>
-								<Portal>
-									<Select.Positioner>
-										<Select.Content>
-											{startDayTimes.items.map((time) => (
-												<Select.Item item={time} key={time.value}>
-													{time.label}
-													<Select.ItemIndicator />
-												</Select.Item>
-											))}
-										</Select.Content>
-									</Select.Positioner>
-								</Portal>
-							</Select.Root>
-						</Field.Root>
-						<Field.Root>
-							<Select.Root collection={endDayTimes} value={selectedEndTime} onValueChange={({ value }) => setSelectedEndTime(value)}>
-								<Select.HiddenSelect />
-								<Select.Label>Select End Time</Select.Label>
-								<Select.Control>
-									<Select.Trigger>
-										<Select.ValueText placeholder="Select End Time" />
-									</Select.Trigger>
-									<Select.IndicatorGroup>
-										<Select.Indicator />
-									</Select.IndicatorGroup>
-								</Select.Control>
-								<Portal>
-									<Select.Positioner>
-										<Select.Content>
-											{endDayTimes.items.map((time) => (
-												<Select.Item item={time} key={time.value}>
-													{time.label}
-													<Select.ItemIndicator />
-												</Select.Item>
-											))}
-										</Select.Content>
-									</Select.Positioner>
-								</Portal>
-							</Select.Root>
-						</Field.Root>
-					</Flex>
-					<Separator my="6" />
-					<Flex flexWrap="wrap" gap={4}>
-						<Field.Root width={["100%", "300px"]}>
-							<Select.Root collection={taskCollection} value={selectedTaskIds} onValueChange={({ value }) => setSelectedTaskIds(value)}>
+				<Flex gap="6">
+					<Field.Root invalid={!!errors.selectedDate}>
+						<Field.Label>Date</Field.Label>
+						<Input
+							type="date"
+							max={dayjs().format("YYYY-MM-DD")}
+							{...register("selectedDate", {
+								required: true,
+								onChange: (e) => {
+									setDate(e.target.value);
+								},
+							})}
+						/>
+					</Field.Root>
+					<Field.Root invalid={!!errors.dayStart}>
+						<Field.Label>Day Start</Field.Label>
+						<Input type="time" {...register("dayStart", { required: true })} />
+					</Field.Root>
+					<Field.Root invalid={!!errors.dayEnd}>
+						<Field.Label>Day End</Field.Label>
+						<Input type="time" {...register("dayEnd", { required: true })} />
+					</Field.Root>
+				</Flex>
+				<Separator my="6" />
+				<Grid columns={2} gridTemplateColumns="1fr 1fr" gap={4}>
+					<GridItem>
+						<Field.Root invalid={!!errors.taskId}>
+							<Select.Root collection={taskCollection} onValueChange={({ value }) => setValue("taskId", value[0])} {...register("taskId", { required: true })}>
 								<Select.HiddenSelect />
 								<Select.Label>Select Task</Select.Label>
 								<Select.Control>
@@ -261,82 +149,30 @@ const AddRecord = () => {
 								</Portal>
 							</Select.Root>
 						</Field.Root>
-
-						<Field.Root width="150px">
-							<Select.Root collection={hourValues} value={fromHour} onValueChange={({ value }) => setFromHour(value)}>
-								<Select.HiddenSelect />
-								<Select.Label>Select Hour</Select.Label>
-								<Select.Control>
-									<Select.Trigger>
-										<Select.ValueText placeholder="Select Hour" />
-									</Select.Trigger>
-									<Select.IndicatorGroup>
-										<Select.Indicator />
-									</Select.IndicatorGroup>
-								</Select.Control>
-								<Portal>
-									<Select.Positioner>
-										<Select.Content>
-											{hourValues.items.map((hour) => (
-												<Select.Item item={hour} key={hour.value}>
-													{hour.label}
-													<Select.ItemIndicator />
-												</Select.Item>
-											))}
-										</Select.Content>
-									</Select.Positioner>
-								</Portal>
-							</Select.Root>
+					</GridItem>
+					<GridItem>
+						<Field.Root invalid={!!errors.taskStartTime}>
+							<Field.Label>Start Time</Field.Label>
+							<Input type="time" {...register("taskStartTime", { required: true })} />
+							<Field.ErrorText>{errors.taskStartTime?.message}</Field.ErrorText>
 						</Field.Root>
-
-						<Field.Root width="150px">
-							<Select.Root collection={minuteValues} value={fromMinute} onValueChange={({ value }) => setFromMinute(value)}>
-								<Select.HiddenSelect />
-								<Select.Label>Select Minute</Select.Label>
-								<Select.Control>
-									<Select.Trigger>
-										<Select.ValueText placeholder="Select Minute" />
-									</Select.Trigger>
-									<Select.IndicatorGroup>
-										<Select.Indicator />
-									</Select.IndicatorGroup>
-								</Select.Control>
-								<Portal>
-									<Select.Positioner>
-										<Select.Content>
-											{minuteValues.items.map((minute) => (
-												<Select.Item item={minute} key={minute.value}>
-													{minute.label}
-													<Select.ItemIndicator />
-												</Select.Item>
-											))}
-										</Select.Content>
-									</Select.Positioner>
-								</Portal>
-							</Select.Root>
+					</GridItem>
+					<GridItem colSpan={2}>
+						<Field.Root>
+							<Field.Label>Comments</Field.Label>
+							<Textarea rows={6} placeholder="Enter comments..." {...register("comments")} />
 						</Field.Root>
-
-						<Field.Root flex="1">
-							<Field.Label>Description</Field.Label>
-							<Input value={description} onChange={(e) => setDescription(e.target.value)} />
-						</Field.Root>
-
-						<Field.Root alignSelf="end" flex="1">
-							<Button colorScheme="blue" onClick={handleAdd}>
-								Add
-							</Button>
-						</Field.Root>
-					</Flex>
-				</Box>
-
-				<Box>
-					<Text fontWeight="semibold" mb={6} fontSize="large">
-						Records for {dayjs(date).format("DD MMM YYYY")}
-					</Text>
-					<TimelineView items={entries} dateKey={date} onUpdate={(updated) => saveRecordsForDate(date, updated)} onDelete={handleDelete} />
-				</Box>
+					</GridItem>
+				</Grid>
+				<Flex justifyContent="center" mt={4}>
+					<Field.Root alignItems="center">
+						<Button colorScheme="blue" type="submit" px={8}>
+							Add Log
+						</Button>
+					</Field.Root>
+				</Flex>
 			</VStack>
-		</Layout>
+		</form>
 	);
 };
 
