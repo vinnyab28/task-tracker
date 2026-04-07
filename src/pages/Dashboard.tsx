@@ -45,7 +45,22 @@ const Dashboard = () => {
 	};
 
 	useEffect(() => {
+		const loadTasks = async () => {
+			try {
+				const taskSnapshot = await getDocs(collection(db, "users", user!.uid, "tasks"));
+				const fetchedTasks: TaskItem[] = taskSnapshot.docs.map((d) => ({ ...(d.data() as TaskItem) }));
+				setTasks(fetchedTasks.sort((a, b) => a.taskName.localeCompare(b.taskName)));
+			} catch (e) {
+				console.error("Error loading tasks:", e);
+				toaster.error({ title: "Failed to load tasks." });
+			}
+		};
+		if (user) loadTasks();
+	}, [user]);
+
+	useEffect(() => {
 		const fetchData = async () => {
+			if (!user) return;
 			setLoadingData(true);
 			try {
 				const snapshotDates: string[] = [];
@@ -54,57 +69,33 @@ const Dashboard = () => {
 					snapshotDates.push(selectedDate.format("YYYY-MM-DD"));
 				} else if (tab === PeriodType.WEEKLY) {
 					for (let i = 0; i < 7; i++) {
-						snapshotDates.push(selectedDate.startOf("week").add(i, "day").format("YYYY-MM-DD"));
+						snapshotDates.push(selectedDate.startOf("isoWeek").add(i, "day").format("YYYY-MM-DD"));
 					}
-				} else if (tab === PeriodType.MONTHLY) {
+				} else {
 					const daysInMonth = selectedDate.daysInMonth();
 					for (let i = 1; i <= daysInMonth; i++) {
 						snapshotDates.push(selectedDate.date(i).format("YYYY-MM-DD"));
 					}
 				}
 
-				const newRecords: { [date: string]: RecordEntry[] } = {};
+				const results = await Promise.all(
+					snapshotDates.map((date) => getDoc(doc(db, "users", user.uid, "records", date)))
+				);
 
-				for (const date of snapshotDates) {
-					const docRef = doc(db, "users", user!.uid, "records", date);
-					const recordsDoc = await getDoc(docRef);
-					if (recordsDoc.exists()) {
-						const data = recordsDoc.data();
-						newRecords[date] = data.entries || [];
-					}
-				}
+				const newRecords: { [date: string]: RecordEntry[] } = {};
+				results.forEach((snap, i) => {
+					if (snap.exists()) newRecords[snapshotDates[i]] = snap.data().entries || [];
+				});
 
 				setRecords(newRecords);
-
-				// Uncomment below if you want to fetch goals too
-				// const goalsDoc = await getDoc(doc(db, USER_DOC_PATH, GOALS_DOC_ID));
-				// if (goalsDoc.exists()) {
-				// 	setGoals(goalsDoc.data() as { [key: string]: number });
-				// }
 			} catch (error) {
 				console.error("Failed to fetch data from Firestore:", error);
 			}
 			setLoadingData(false);
 		};
 
-		const loadTasks = async () => {
-			if (!user) return;
-
-			try {
-				const taskSnapshot = await getDocs(collection(db, "users", user.uid, "tasks"));
-				const fetchedTasks: TaskItem[] = taskSnapshot.docs.map((doc) => ({ ...(doc.data() as TaskItem) }));
-				setTasks(fetchedTasks.sort((a, b) => a.taskName.localeCompare(b.taskName)));
-			} catch (e) {
-				console.error("Error loading tasks:", e);
-				toaster.error({ title: "Failed to load tasks." });
-			}
-		};
-
-		if (user) {
-			fetchData();
-			loadTasks();
-		}
-	}, [selectedDate, user]);
+		fetchData();
+	}, [selectedDate, tab, user]);
 
 	return (
 		<Layout>
