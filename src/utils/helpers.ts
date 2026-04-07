@@ -45,6 +45,7 @@ export const minutesToTimeLabel = (mins: number): string => {
  * Calculates duration between two "HH:MM" strings. Returns "" if to ≤ from.
  */
 export const calcDuration = (from: string, to: string): string => {
+    if (!from || !to) return "";
     const diff = timeToMinutes(to) - timeToMinutes(from);
     if (diff <= 0) return "";
     return formatMinutes(diff);
