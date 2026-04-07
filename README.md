@@ -1,54 +1,43 @@
-# React + TypeScript + Vite
+# Day Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A personal time-tracking app built around how your day actually flows — from the moment you wake up to when you sleep.
 
-Currently, two official plugins are available:
+## What it does
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Log your day as a sequential timeline. Set your wake time, then add back-to-back time blocks for each task. Each entry's start time auto-fills from the previous entry's end, so the timeline stays consistent. Wrap up your day with a sleep time.
 
-## Expanding the ESLint configuration
+**Record Tasks**
+- Enter wake time to start your day
+- Add time blocks sequentially — task + until time + optional note
+- Insert forgotten entries anywhere in the day, even after wrapping up
+- Wrap up with a sleep time
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+**Dashboard**
+- **Daily** — stat cards (woke up, slept, awake, tracked) + task time breakdown
+- **Weekly / Monthly** — per-task line chart over the period + wake/sleep pattern chart with averages
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## Stack
+
+- React 19 + TypeScript, Vite
+- Chakra UI v3
+- Firebase Firestore (auth + data)
+- Recharts via `@chakra-ui/charts`
+- Day.js
+
+## Getting started
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Requires a Firebase project. Create a `.env` file at the root:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
 ```
