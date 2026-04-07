@@ -10,3 +10,14 @@ export const parseDurationToMinutes = (duration?: string): number => {
     const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0;
     return hours * 60 + minutes;
 };
+
+/**
+ * Formats a minute count into a human-readable string (e.g. 90 → "1h 30m", 45 → "45m", 60 → "1h").
+ */
+export const formatMinutes = (mins: number): string => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+};

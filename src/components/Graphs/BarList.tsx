@@ -1,3 +1,4 @@
+import { formatMinutes } from "@/utils/helpers";
 import { transformTaskData } from "@/utils/transformTaskData";
 import { BarList, useChart, type BarListData } from "@chakra-ui/charts";
 
@@ -8,6 +9,7 @@ const BarListComponent = ({ records, selectedDate, periodType }) => {
 		sort: { by: "value", direction: "desc" },
 		data,
 		series: [{ name: "name", color: "teal.subtle" }],
+		valueFormatter: (val) => formatMinutes(val as number),
 	});
 
 	return (
