@@ -14,8 +14,7 @@ import { useEffect, useState } from "react";
 import { LuArrowLeft, LuArrowRight, LuPlus } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout/Layout";
-import type { RecordEntry } from "./AddRecord";
-import type { TaskItem } from "./TaskManager";
+import type { DayRecord, TaskItem } from "@/utils/types";
 
 dayjs.extend(isoWeek);
 
@@ -53,7 +52,7 @@ const Dashboard = () => {
 	const navigate = useNavigate();
 	const { user } = useAuth();
 
-	const [records, setRecords] = useState<{ [date: string]: RecordEntry[] }>({});
+	const [records, setRecords] = useState<{ [date: string]: DayRecord }>({});
 	const [tasks, setTasks] = useState<TaskItem[]>([]);
 	const [selectedDate, setSelectedDate] = useState(dayjs());
 	const [tab, setTab] = useState<PeriodType>(PeriodType.DAILY);
@@ -92,9 +91,9 @@ const Dashboard = () => {
 				const snaps = await Promise.all(
 					dates.map((date) => getDoc(doc(db, "users", user.uid, "records", date)))
 				);
-				const newRecords: { [date: string]: RecordEntry[] } = {};
+				const newRecords: { [date: string]: DayRecord } = {};
 				snaps.forEach((snap, i) => {
-					if (snap.exists()) newRecords[dates[i]] = snap.data().entries || [];
+					if (snap.exists()) newRecords[dates[i]] = snap.data() as DayRecord;
 				});
 				setRecords(newRecords);
 			} catch (error) {

@@ -2,20 +2,20 @@ import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 dayjs.extend(isoWeek);
 
-import type { RecordEntry } from "@/pages/AddRecord";
 import { parseDurationToMinutes } from "@/utils/helpers";
-import type { PeriodType } from "@/utils/types";
+import type { DayRecord, PeriodType } from "@/utils/types";
 
 type FormattedData = { name: string; value: number };
 
 export const transformTaskData = (
-    records: { [date: string]: RecordEntry[] },
+    records: { [date: string]: DayRecord },
     selectedDate: dayjs.Dayjs,
     period: PeriodType
 ): FormattedData[] => {
     const grouped: { [taskName: string]: number } = {};
 
-    for (const [dateStr, entries] of Object.entries(records)) {
+    for (const [dateStr, record] of Object.entries(records)) {
+        const entries = record.entries ?? [];
         const date = dayjs(dateStr);
         const isMatch =
             period === "daily"

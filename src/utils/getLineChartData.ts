@@ -2,19 +2,20 @@ import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 dayjs.extend(isoWeek);
 
-import type { RecordEntry } from "@/pages/AddRecord";
 import { parseDurationToMinutes } from "@/utils/helpers";
+import type { DayRecord } from "@/utils/types";
 import { PeriodType } from "./types";
 
 export const getLineChartData = (
-    records: { [dateStr: string]: RecordEntry[] },
+    records: { [dateStr: string]: DayRecord },
     selectedDate: dayjs.Dayjs,
     taskName: string,
     period: PeriodType
 ): { date: string; value: number }[] => {
     const result: { [label: string]: number } = {};
 
-    for (const [dateStr, entries] of Object.entries(records)) {
+    for (const [dateStr, record] of Object.entries(records)) {
+        const entries = record.entries ?? [];
         const date = dayjs(dateStr);
         const isInPeriod =
             period === PeriodType.WEEKLY
