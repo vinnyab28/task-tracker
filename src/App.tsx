@@ -4,7 +4,7 @@ import AppRoutes from "./routes/AppRoutes";
 
 function App() {
 	return (
-		<Router>
+		<Router basename="/task-tracker">
 			<AuthProvider>
 				<AppRoutes />
 			</AuthProvider>
