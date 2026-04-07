@@ -3,6 +3,7 @@ import isoWeek from "dayjs/plugin/isoWeek";
 dayjs.extend(isoWeek);
 
 import type { RecordEntry } from "@/pages/AddRecord";
+import { parseDurationToMinutes } from "@/utils/helpers";
 import type { PeriodType } from "@/utils/types";
 
 type FormattedData = { name: string; value: number };
@@ -25,21 +26,9 @@ export const transformTaskData = (
 
         if (!isMatch) continue;
 
-        const sortedEntries = [...entries].sort((a, b) => a.from.localeCompare(b.from));
-
-        for (let i = 0; i < sortedEntries.length; i++) {
-            const current = sortedEntries[i];
-            const fromTime = dayjs(`${dateStr}T${current.from}`);
-
-            const nextTime =
-                i < sortedEntries.length - 1
-                    ? dayjs(`${dateStr}T${sortedEntries[i + 1].from}`)
-                    : date.isSame(dayjs(), "day")
-                        ? dayjs()
-                        : fromTime;
-
-            const minutes = Math.max(nextTime.diff(fromTime, "minute"), 0);
-            grouped[current.task.taskName] = (grouped[current.task.taskName] || 0) + minutes;
+        for (const entry of entries) {
+            const minutes = parseDurationToMinutes(entry.duration);
+            grouped[entry.task.taskName] = (grouped[entry.task.taskName] || 0) + minutes;
         }
     }
 
