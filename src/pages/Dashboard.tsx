@@ -19,35 +19,62 @@ import type { TaskItem } from "./TaskManager";
 
 dayjs.extend(isoWeek);
 
+type PeriodUnit = "day" | "week" | "month";
+
+const PERIOD_UNIT: Record<PeriodType, PeriodUnit> = {
+	daily: "day",
+	weekly: "week",
+	monthly: "month",
+};
+
+const getSnapshotDates = (tab: PeriodType, date: dayjs.Dayjs): string[] => {
+	if (tab === PeriodType.DAILY) {
+		return [date.format("YYYY-MM-DD")];
+	}
+	if (tab === PeriodType.WEEKLY) {
+		return Array.from({ length: 7 }, (_, i) =>
+			date.startOf("isoWeek").add(i, "day").format("YYYY-MM-DD")
+		);
+	}
+	return Array.from({ length: date.daysInMonth() }, (_, i) =>
+		date.date(i + 1).format("YYYY-MM-DD")
+	);
+};
+
+const getDateLabel = (tab: PeriodType, date: dayjs.Dayjs): string => {
+	if (tab === PeriodType.DAILY) return date.format("MMM D, YYYY");
+	if (tab === PeriodType.WEEKLY) {
+		return `${date.startOf("isoWeek").format("MMM D")} – ${date.endOf("isoWeek").format("MMM D, YYYY")}`;
+	}
+	return date.format("MMMM YYYY");
+};
+
 const Dashboard = () => {
 	const navigate = useNavigate();
 	const { user } = useAuth();
 
 	const [records, setRecords] = useState<{ [date: string]: RecordEntry[] }>({});
-	// const [goals, setGoals] = useState<{ [key: string]: number }>({});
 	const [tasks, setTasks] = useState<TaskItem[]>([]);
-
 	const [selectedDate, setSelectedDate] = useState(dayjs());
 	const [tab, setTab] = useState<PeriodType>(PeriodType.DAILY);
 	const [loadingData, setLoadingData] = useState(false);
 
-	const handlePrev = () => {
-		setSelectedDate((prev) => (tab === PeriodType.DAILY ? prev.subtract(1, "day") : tab === PeriodType.WEEKLY ? prev.subtract(1, "week") : prev.subtract(1, "month")));
-	};
+	const unit = PERIOD_UNIT[tab];
+	const dateLabel = getDateLabel(tab, selectedDate);
+	const isAtLimit = selectedDate.isSame(dayjs(), unit);
 
+	const handlePrev = () => setSelectedDate((prev) => prev.subtract(1, unit));
 	const handleNext = () => {
-		const now = dayjs();
-		const next = tab === PeriodType.DAILY ? selectedDate.add(1, "day") : tab === PeriodType.WEEKLY ? selectedDate.add(1, "week") : selectedDate.add(1, "month");
-		if (next.isAfter(now, tab === PeriodType.MONTHLY ? "month" : tab === PeriodType.WEEKLY ? "week" : "day")) return;
-		setSelectedDate(next);
+		const next = selectedDate.add(1, unit);
+		if (!next.isAfter(dayjs(), unit)) setSelectedDate(next);
 	};
 
 	useEffect(() => {
 		const loadTasks = async () => {
 			try {
-				const taskSnapshot = await getDocs(collection(db, "users", user!.uid, "tasks"));
-				const fetchedTasks: TaskItem[] = taskSnapshot.docs.map((d) => ({ ...(d.data() as TaskItem) }));
-				setTasks(fetchedTasks.sort((a, b) => a.taskName.localeCompare(b.taskName)));
+				const snapshot = await getDocs(collection(db, "users", user!.uid, "tasks"));
+				const fetched: TaskItem[] = snapshot.docs.map((d) => ({ ...(d.data() as TaskItem) }));
+				setTasks(fetched.sort((a, b) => a.taskName.localeCompare(b.taskName)));
 			} catch (e) {
 				console.error("Error loading tasks:", e);
 				toaster.error({ title: "Failed to load tasks." });
@@ -57,51 +84,32 @@ const Dashboard = () => {
 	}, [user]);
 
 	useEffect(() => {
-		const fetchData = async () => {
+		const fetchRecords = async () => {
 			if (!user) return;
 			setLoadingData(true);
 			try {
-				const snapshotDates: string[] = [];
-
-				if (tab === PeriodType.DAILY) {
-					snapshotDates.push(selectedDate.format("YYYY-MM-DD"));
-				} else if (tab === PeriodType.WEEKLY) {
-					for (let i = 0; i < 7; i++) {
-						snapshotDates.push(selectedDate.startOf("isoWeek").add(i, "day").format("YYYY-MM-DD"));
-					}
-				} else {
-					const daysInMonth = selectedDate.daysInMonth();
-					for (let i = 1; i <= daysInMonth; i++) {
-						snapshotDates.push(selectedDate.date(i).format("YYYY-MM-DD"));
-					}
-				}
-
-				const results = await Promise.all(
-					snapshotDates.map((date) => getDoc(doc(db, "users", user.uid, "records", date)))
+				const dates = getSnapshotDates(tab, selectedDate);
+				const snaps = await Promise.all(
+					dates.map((date) => getDoc(doc(db, "users", user.uid, "records", date)))
 				);
-
 				const newRecords: { [date: string]: RecordEntry[] } = {};
-				results.forEach((snap, i) => {
-					if (snap.exists()) newRecords[snapshotDates[i]] = snap.data().entries || [];
+				snaps.forEach((snap, i) => {
+					if (snap.exists()) newRecords[dates[i]] = snap.data().entries || [];
 				});
-
 				setRecords(newRecords);
 			} catch (error) {
-				console.error("Failed to fetch data from Firestore:", error);
+				console.error("Failed to fetch records:", error);
 			}
 			setLoadingData(false);
 		};
-
-		fetchData();
+		fetchRecords();
 	}, [selectedDate, tab, user]);
 
 	return (
 		<Layout>
 			<Box>
 				<Flex justifyContent="space-between">
-					<Heading size="lg" mb={4}>
-						Dashboard
-					</Heading>
+					<Heading size="lg" mb={4}>Dashboard</Heading>
 					<Button colorScheme="teal" onClick={() => navigate("/add")}>
 						<LuPlus />
 						Record Tasks
@@ -110,12 +118,11 @@ const Dashboard = () => {
 
 				<Tabs.Root
 					value={tab}
-					defaultChecked={true}
 					variant="line"
 					colorScheme="blue"
 					onValueChange={({ value }) => {
 						setTab(value as PeriodType);
-						setSelectedDate(dayjs()); // reset view when switching tab
+						setSelectedDate(dayjs());
 					}}
 				>
 					<Tabs.List>
@@ -126,23 +133,14 @@ const Dashboard = () => {
 
 					<Tabs.ContentGroup>
 						<Flex justify="space-between" align="center" w="full" my={6}>
-							<Button variant="outline" onClick={handlePrev}>
-								<LuArrowLeft />
-							</Button>
-							<Text fontWeight="semibold">
-								{tab === "daily" ? selectedDate.format("MMM D, YYYY") : tab === "weekly" ? `${selectedDate.startOf("week").format("MMM D")} – ${selectedDate.endOf("week").format("MMM D, YYYY")}` : selectedDate.format("MMMM YYYY")}
-							</Text>
-							<Button variant="outline" onClick={handleNext} disabled={selectedDate.isSame(dayjs(), tab === "monthly" ? "month" : tab === "weekly" ? "week" : "day")}>
-								<LuArrowRight />
-							</Button>
+							<Button variant="outline" onClick={handlePrev}><LuArrowLeft /></Button>
+							<Text fontWeight="semibold">{dateLabel}</Text>
+							<Button variant="outline" onClick={handleNext} disabled={isAtLimit}><LuArrowRight /></Button>
 						</Flex>
 
-						{loadingData && (
-							<Box w="full" h="full">
-								<Loader showText />
-							</Box>
-						)}
-						{!loadingData && (
+						{loadingData ? (
+							<Loader showText />
+						) : (
 							<>
 								<Tabs.Content value="daily">
 									<DailyDashboardComponent records={records} selectedDate={selectedDate} />
