@@ -1,37 +1,43 @@
-import type { RecordEntry } from "@/pages/AddRecord";
+import { minutesToTimeLabel, timeToMinutes } from "@/utils/helpers";
+import type { RecordEntry } from "@/utils/types";
 import { Box, IconButton, Text, Timeline, VStack } from "@chakra-ui/react";
-import { LuClipboardList, LuClock3, LuPencil, LuTrash2 } from "react-icons/lu";
+import { LuBed, LuClipboardList, LuClock3, LuPencil, LuPlus, LuSunrise, LuTrash2 } from "react-icons/lu";
 import { toaster } from "./toaster";
 
 interface TimelineViewProps {
+	wakeTime: string;
+	sleepTime?: string;
 	items: RecordEntry[];
 	onDelete: (index: number) => void;
 	onEdit: (index: number) => void;
+	onInsertAfter?: (index: number) => void;
 }
 
-const TimelineView: React.FC<TimelineViewProps> = ({ items, onDelete, onEdit }) => {
+const TimelineView: React.FC<TimelineViewProps> = ({ wakeTime, sleepTime, items, onDelete, onEdit, onInsertAfter }) => {
 	const handleDelete = (idx: number) => {
 		onDelete(idx);
-		toaster.create({
-			title: "Task deleted",
-			type: "info",
-			duration: 2000,
-			closable: true,
-		});
+		toaster.create({ title: "Entry deleted", type: "info", duration: 2000, closable: true });
 	};
-
-	if (items.length === 0) {
-		return (
-			<Box px={4}>
-				<Text color="gray.500">No tasks recorded for this date.</Text>
-			</Box>
-		);
-	}
 
 	return (
 		<Timeline.Root px={4}>
+			{/* Wake up marker */}
+			<Timeline.Item>
+				<Timeline.Connector>
+					<Timeline.Separator />
+					<Timeline.Indicator color="orange.400">
+						<LuSunrise />
+					</Timeline.Indicator>
+				</Timeline.Connector>
+				<Timeline.Content>
+					<Text fontWeight="medium">Wake up</Text>
+					<Text fontSize="sm" color="fg.muted">{minutesToTimeLabel(timeToMinutes(wakeTime))}</Text>
+				</Timeline.Content>
+			</Timeline.Item>
+
+			{/* Entries */}
 			{items.map((item, idx) => (
-				<Timeline.Item key={`${item.task._id}-${item.from}`}>
+				<Timeline.Item key={`${item.task._id}-${item.from}-${idx}`}>
 					<Timeline.Connector>
 						<Timeline.Separator />
 						<Timeline.Indicator color="teal.500">
@@ -46,28 +52,54 @@ const TimelineView: React.FC<TimelineViewProps> = ({ items, onDelete, onEdit }) 
 									<IconButton size="xs" variant="ghost" aria-label="Edit" onClick={() => onEdit(idx)}>
 										<LuPencil />
 									</IconButton>
-									<IconButton size="xs" colorScheme="red" variant="ghost" aria-label="Delete" onClick={() => handleDelete(idx)}>
+									<IconButton size="xs" variant="ghost" colorPalette="red" aria-label="Delete" onClick={() => handleDelete(idx)}>
 										<LuTrash2 />
 									</IconButton>
 								</Box>
 							</Box>
-							<Text fontSize="sm" color="gray.500">
-								Started at {item.from}
+							<Text fontSize="sm" color="fg.muted">
+								{minutesToTimeLabel(timeToMinutes(item.from))} → {item.to ? minutesToTimeLabel(timeToMinutes(item.to)) : "?"}
 							</Text>
 							{item.description && (
-								<Text fontSize="sm" color="gray.600">
-									{item.description}
-								</Text>
+								<Text fontSize="sm" color="fg.subtle">{item.description}</Text>
 							)}
 							{item.duration && (
-								<Text fontSize="xs" color="gray.400" mt={1} display="flex" alignItems="center" gap={1}>
-									<LuClock3 /> Duration: {item.duration}
+								<Text fontSize="xs" color="fg.muted" display="flex" alignItems="center" gap={1}>
+									<LuClock3 /> {item.duration}
 								</Text>
+							)}
+							{onInsertAfter && (
+								<IconButton
+									size="2xs"
+									variant="ghost"
+									colorPalette="teal"
+									aria-label="Insert entry after"
+									title="Insert entry after this"
+									onClick={() => onInsertAfter(idx)}
+								>
+									<LuPlus />
+								</IconButton>
 							)}
 						</VStack>
 					</Timeline.Content>
 				</Timeline.Item>
 			))}
+
+			{/* Sleep marker */}
+			{sleepTime && (
+				<Timeline.Item>
+					<Timeline.Connector>
+						<Timeline.Separator />
+						<Timeline.Indicator color="indigo.400">
+							<LuBed />
+						</Timeline.Indicator>
+					</Timeline.Connector>
+					<Timeline.Content>
+						<Text fontWeight="medium">Sleep</Text>
+						<Text fontSize="sm" color="fg.muted">{minutesToTimeLabel(timeToMinutes(sleepTime!))}</Text>
+					</Timeline.Content>
+				</Timeline.Item>
+			)}
 		</Timeline.Root>
 	);
 };
