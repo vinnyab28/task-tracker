@@ -1,55 +1,16 @@
 import type { RecordEntry } from "@/pages/AddRecord";
 import { Box, IconButton, Text, Timeline, VStack } from "@chakra-ui/react";
-import dayjs from "dayjs";
-import { useEffect, useState } from "react";
 import { LuClipboardList, LuClock3, LuTrash2 } from "react-icons/lu";
 import { toaster } from "./toaster";
 
 interface TimelineViewProps {
 	items: RecordEntry[];
-	dateKey: string;
-	onUpdate: (newItems: RecordEntry[]) => void;
 	onDelete: (index: number) => void;
 }
 
-const TimelineView: React.FC<TimelineViewProps> = ({ items, dateKey, onUpdate }) => {
-	const [timelineItems, setTimelineItems] = useState<RecordEntry[]>([]);
-
-	useEffect(() => {
-		setTimelineItems(items);
-	}, [items]);
-
-	// Recalculates duration after deletion or update
-	const recalculateDurations = (list: RecordEntry[]) => {
-		const sorted = [...list].sort((a, b) => a.from.localeCompare(b.from));
-		const updated = sorted.map((entry, index) => {
-			const currentTime = dayjs(`${dateKey}T${entry.from}`);
-			let nextTime: dayjs.Dayjs;
-
-			if (index < sorted.length - 1) {
-				nextTime = dayjs(`${dateKey}T${sorted[index + 1].from}`);
-			} else {
-				nextTime = dayjs(dateKey).isSame(dayjs(), "day") ? dayjs() : currentTime;
-			}
-
-			const mins = Math.max(nextTime.diff(currentTime, "minute"), 0);
-			const hrs = Math.floor(mins / 60);
-			const remMins = mins % 60;
-			const durationStr = `${hrs > 0 ? `${hrs}h ` : ""}${remMins}mins`;
-
-			return { ...entry, duration: durationStr };
-		});
-
-		return updated;
-	};
-
+const TimelineView: React.FC<TimelineViewProps> = ({ items, onDelete }) => {
 	const handleDelete = (idx: number) => {
-		const updatedItems = [...timelineItems];
-		updatedItems.splice(idx, 1);
-		const recalculated = recalculateDurations(updatedItems);
-		setTimelineItems(recalculated);
-		onUpdate(recalculated);
-
+		onDelete(idx);
 		toaster.create({
 			title: "Task deleted",
 			type: "info",
@@ -58,7 +19,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ items, dateKey, onUpdate })
 		});
 	};
 
-	if (timelineItems.length === 0) {
+	if (items.length === 0) {
 		return (
 			<Box px={4}>
 				<Text color="gray.500">No tasks recorded for this date.</Text>
@@ -68,7 +29,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ items, dateKey, onUpdate })
 
 	return (
 		<Timeline.Root px={4}>
-			{timelineItems.map((item, idx) => (
+			{items.map((item, idx) => (
 				<Timeline.Item key={`${item.task._id}-${item.from}`}>
 					<Timeline.Connector>
 						<Timeline.Separator />

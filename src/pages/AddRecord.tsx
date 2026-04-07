@@ -33,13 +33,13 @@ const startDayTimes = createListCollection({
 
 const endDayTimes = createListCollection({
 	items: [
-		{ label: "18:00 PM", value: "18:00" },
-		{ label: "19:00 PM", value: "19:00" },
-		{ label: "20:00 PM", value: "20:00" },
-		{ label: "21:00 PM", value: "21:00" },
-		{ label: "22:00 PM", value: "22:00" },
-		{ label: "23:00 PM", value: "23:00" },
-		{ label: "23:59 PM", value: "23:59" },
+		{ label: "6:00 PM", value: "18:00" },
+		{ label: "7:00 PM", value: "19:00" },
+		{ label: "8:00 PM", value: "20:00" },
+		{ label: "9:00 PM", value: "21:00" },
+		{ label: "10:00 PM", value: "22:00" },
+		{ label: "11:00 PM", value: "23:00" },
+		{ label: "11:59 PM", value: "23:59" },
 	],
 });
 
@@ -59,22 +59,21 @@ const AddRecord = () => {
 	const addDurations = useCallback(
 		(list: RecordEntry[]): RecordEntry[] => {
 			return list.map((entry, index) => {
-				const start = dayjs(`${date}T${entry.from}`);
+				let start = dayjs(`${date}T${entry.from}`);
 
-				let end: dayjs.Dayjs;
-				if (index === 0 && list.length > 1) {
-					// Start of first entry cannot be before selectedStartTime
+				// Clamp first entry to selectedStartTime if it starts before it
+				if (index === 0) {
 					const adjustedStart = dayjs(`${date}T${selectedStartTime[0]}`);
 					if (start.isBefore(adjustedStart)) {
 						entry = { ...entry, from: selectedStartTime[0] };
+						start = adjustedStart;
 					}
 				}
 
-				if (index === list.length - 1) {
-					end = dayjs(`${date}T${selectedEndTime[0]}`);
-				} else {
-					end = dayjs(`${date}T${list[index + 1].from}`);
-				}
+				const end =
+					index === list.length - 1
+						? dayjs(`${date}T${selectedEndTime[0]}`)
+						: dayjs(`${date}T${list[index + 1].from}`);
 
 				const diff = end.diff(start, "minute");
 				if (diff <= 0) return { ...entry, duration: "" };
@@ -174,7 +173,7 @@ const AddRecord = () => {
 	return (
 		<Layout>
 			<VStack align="stretch" w="full">
-				<Box p="4" borderWidth="1px" borderColor="border.disabled" color="fg.disabled">
+				<Box p="4" borderWidth="1px" borderColor="border.muted">
 					<Flex gap="6">
 						<Field.Root>
 							<Field.Label>Date</Field.Label>
@@ -333,7 +332,7 @@ const AddRecord = () => {
 					<Text fontWeight="semibold" mb={6} fontSize="large">
 						Records for {dayjs(date).format("DD MMM YYYY")}
 					</Text>
-					<TimelineView items={entries} dateKey={date} onUpdate={(updated) => saveRecordsForDate(date, updated)} onDelete={handleDelete} />
+					<TimelineView items={entries} onDelete={handleDelete} />
 				</Box>
 			</VStack>
 		</Layout>
