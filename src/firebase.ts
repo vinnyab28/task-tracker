@@ -17,23 +17,6 @@ const auth = getAuth(app)
 const provider = new GoogleAuthProvider()
 const db = getFirestore(app)
 
-// Configure FirebaseUI.
-const uiConfig = {
-    // Popup signin flow rather than redirect flow.
-    signInFlow: "popup",
-    // Redirect to /dashboard after sign in is successful. Alternatively you can provide a callbacks.signInSuccess function.
-    signInSuccessUrl: "/dashboard",
-    // We will display Google and Facebook as auth providers.
-    signInOptions: [{
-        provider: GoogleAuthProvider.PROVIDER_ID,
-        scopes: [
-            'https://www.googleapis.com/auth/userinfo.email',
-            'https://www.googleapis.com/auth/userinfo.profile'
-        ]
-    }],
-
-};
-
-export { auth, db, provider, uiConfig };
+export { auth, db, provider };
 
 

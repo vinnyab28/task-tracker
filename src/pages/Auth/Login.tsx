@@ -1,13 +1,13 @@
-import StyledFirebaseAuth from "@/components/ui/StyledFirebaseAuth";
-import { auth, uiConfig } from "@/firebase";
-import { Center, Heading, VStack } from "@chakra-ui/react";
+import { auth, provider } from "@/firebase";
+import { Button, Center, Heading, VStack } from "@chakra-ui/react";
+import { signInWithPopup } from "firebase/auth";
 
 const Login = () => {
 	return (
 		<Center minH="100vh">
 			<VStack>
 				<Heading>Task Tracker</Heading>
-				<StyledFirebaseAuth uiConfig={uiConfig} firebaseAuth={auth} />
+				<Button onClick={() => signInWithPopup(auth, provider)}>Sign in with Google</Button>
 			</VStack>
 		</Center>
 	);
