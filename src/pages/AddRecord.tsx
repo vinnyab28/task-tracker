@@ -50,8 +50,8 @@ const AddRecord = () => {
 	const [entries, setEntries] = useState<RecordEntry[]>([]);
 
 	const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
-	const [selectedStartTime, setSelectedStartTime] = useState<string[]>(["4:00"]);
-	const [selectedEndTime, setSelectedEndTime] = useState<string[]>(["21:00"]);
+	const [selectedStartTime, setSelectedStartTime] = useState<string[]>(() => [localStorage.getItem("dayStartTime") ?? "4:00"]);
+	const [selectedEndTime, setSelectedEndTime] = useState<string[]>(() => [localStorage.getItem("dayEndTime") ?? "21:00"]);
 	const [fromHour, setFromHour] = useState<string[]>([]);
 	const [fromMinute, setFromMinute] = useState<string[]>([]);
 	const [description, setDescription] = useState("");
@@ -118,6 +118,9 @@ const AddRecord = () => {
 		};
 		if (user) loadRecordsForDate(date);
 	}, [date, user, addDurations]);
+
+	useEffect(() => { localStorage.setItem("dayStartTime", selectedStartTime[0]); }, [selectedStartTime]);
+	useEffect(() => { localStorage.setItem("dayEndTime", selectedEndTime[0]); }, [selectedEndTime]);
 
 	const saveRecordsForDate = async (selectedDate: string, updated: RecordEntry[]) => {
 		const sorted = updated.sort((a, b) => (dayjs(`${date}T${a.from}`).isBefore(dayjs(`${date}T${b.from}`)) ? -1 : 1));
