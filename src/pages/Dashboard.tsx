@@ -1,5 +1,3 @@
-"use client";
-
 import DailyDashboardComponent from "@/components/Dashboard/DailyDashboard";
 import MonthlyDashboardComponent from "@/components/Dashboard/MonthlyDashboard";
 import WeeklyDashboardComponent from "@/components/Dashboard/WeeklyDashboard";

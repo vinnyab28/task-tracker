@@ -22,16 +22,10 @@ const TaskManager = () => {
 	const { user } = useAuth();
 	const [tasks, setTasks] = useState<TaskItem[]>([]);
 	const [newTask, setNewTask] = useState("");
-	const [editingId, setEditingId] = useState<string | null>(null);
-	const [editedName, setEditedName] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [isSubmitted, setIsSubmitted] = useState(false);
 
-	// const [goalType, setGoalType] = useState<PeriodType>(PeriodType.DAILY);
-	// const [goalValue, setGoalValue] = useState(0);
-
 	const fetchTasks = useCallback(async () => {
-		// Firebase collection path: users/{uid}/tasks
 		const userTasksRef = user ? collection(db, "users", user.uid, "tasks") : null;
 		const snapshot = await getDocs(userTasksRef!);
 		const items: TaskItem[] = snapshot.docs.map((doc) => ({ ...doc.data(), _id: doc.id } as TaskItem));
@@ -90,29 +84,6 @@ const TaskManager = () => {
 		setTasks((prev) => prev.filter((t) => t._id !== _id));
 	};
 
-	const handleSaveEdit = async () => {
-		if (!editingId) return;
-
-		const updatedTasks = tasks.map((t) =>
-			t._id === editingId
-				? {
-						...t,
-						taskName: editedName.trim(),
-						goals: {
-							...t.goals,
-							// [goalType]: goalValue,
-						},
-				  }
-				: t
-		);
-		const updatedTask = updatedTasks.find((t) => t._id === editingId);
-		if (updatedTask) {
-			await saveTaskToFirebase(updatedTask);
-			setTasks(updatedTasks);
-		}
-		setEditingId(null);
-	};
-
 	return (
 		<Layout>
 			<Box>
@@ -142,70 +113,21 @@ const TaskManager = () => {
 							</EmptyState.Indicator>
 							<VStack textAlign="center">
 								<EmptyState.Title>Your task list is empty</EmptyState.Title>
-								{/* <EmptyState.Description>Explore our products and add items to your cart</EmptyState.Description> */}
 							</VStack>
 						</EmptyState.Content>
 					</EmptyState.Root>
 				) : (
 					<List.Root>
-						{tasks.map((task) => {
-							const isEditing = editingId === task._id;
-
-							return (
-								<List.Item key={task._id} display="flex" flexDir="column" my={2} p={3} border="1px solid" borderColor="gray.300" rounded="md">
-									<Flex justify="space-between" align="center" gap={2}>
-										{isEditing ? <Input value={editedName} onChange={(e) => setEditedName(e.target.value)} flex="1" size="sm" /> : <Text fontWeight="medium">{task.taskName}</Text>}
-
-										<Flex gap={2}>
-											{isEditing ? (
-												<>
-													<Button size="sm" onClick={handleSaveEdit}>
-														Save
-													</Button>
-													<Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
-														Cancel
-													</Button>
-												</>
-											) : (
-												<>
-													{/* <Button
-														size="sm"
-														onClick={() => {
-															setEditingId(task._id);
-															setEditedName(task.taskName);
-															setGoalType("daily");
-															setGoalValue(task.goals?.daily || 0);
-														}}
-														variant="subtle"
-													>
-														Edit
-													</Button> */}
-													<IconButton aria-label="Delete" size="sm" colorScheme="red" variant="surface" colorPalette="red" onClick={() => handleDelete(task._id)}>
-														<LuTrash2 />
-													</IconButton>
-												</>
-											)}
-										</Flex>
-									</Flex>
-
-									{/* {isEditing && (
-										<Flex direction={{ base: "column", md: "row" }} align="center" gap={3} mt={3}>
-											<SegmentGroup.Root defaultValue={goalType}>
-												<SegmentGroup.Indicator />
-												<SegmentGroup.Items items={["Daily", "Weekly", "Monthly"]} />
-											</SegmentGroup.Root>
-
-											<Flex align="center" gap={1}>
-												<Text fontSize="sm" minW="50px">
-													Goal:
-												</Text>
-												<Input size="sm" type="number" min={0} value={goalValue} onChange={(e) => setGoalValue(Number(e.target.value))} w="80px" placeholder="hrs" />
-											</Flex>
-										</Flex>
-									)} */}
-								</List.Item>
-							);
-						})}
+						{tasks.map((task) => (
+							<List.Item key={task._id} display="flex" flexDir="column" my={2} p={3} border="1px solid" borderColor="gray.300" rounded="md">
+								<Flex justify="space-between" align="center" gap={2}>
+									<Text fontWeight="medium">{task.taskName}</Text>
+									<IconButton aria-label="Delete" size="sm" colorScheme="red" variant="surface" colorPalette="red" onClick={() => handleDelete(task._id)}>
+										<LuTrash2 />
+									</IconButton>
+								</Flex>
+							</List.Item>
+						))}
 					</List.Root>
 				)}
 			</Box>
