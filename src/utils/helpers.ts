@@ -21,3 +21,31 @@ export const formatMinutes = (mins: number): string => {
     if (m === 0) return `${h}h`;
     return `${h}h ${m}m`;
 };
+
+/**
+ * Parses "HH:MM" into minutes since midnight (e.g. "07:30" → 450).
+ */
+export const timeToMinutes = (time: string): number => {
+    const [h, m] = time.split(":").map(Number);
+    return h * 60 + m;
+};
+
+/**
+ * Formats minutes since midnight into a 12h label (e.g. 450 → "7:30am", 1380 → "11:00pm").
+ */
+export const minutesToTimeLabel = (mins: number): string => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const ampm = h >= 12 ? "pm" : "am";
+    const displayH = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    return `${displayH}:${String(m).padStart(2, "0")}${ampm}`;
+};
+
+/**
+ * Calculates duration between two "HH:MM" strings. Returns "" if to ≤ from.
+ */
+export const calcDuration = (from: string, to: string): string => {
+    const diff = timeToMinutes(to) - timeToMinutes(from);
+    if (diff <= 0) return "";
+    return formatMinutes(diff);
+};

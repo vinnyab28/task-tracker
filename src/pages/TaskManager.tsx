@@ -1,22 +1,13 @@
 import { toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/firebase";
+import type { TaskItem } from "@/utils/types";
 import { Box, Button, EmptyState, Field, Fieldset, Flex, Heading, HStack, IconButton, Input, List, Text, VStack } from "@chakra-ui/react";
 import { collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import { LuNotebookPen, LuTrash2 } from "react-icons/lu";
 import { v4 as uuidv4 } from "uuid";
 import Layout from "../components/Layout/Layout";
-
-export interface TaskItem {
-	_id: string;
-	taskName: string;
-	goals?: {
-		daily?: number;
-		weekly?: number;
-		monthly?: number;
-	};
-}
 
 const TaskManager = () => {
 	const { user } = useAuth();
