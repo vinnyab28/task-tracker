@@ -9,14 +9,13 @@ const BarListComponent = ({ records, selectedDate, periodType }) => {
 		sort: { by: "value", direction: "desc" },
 		data,
 		series: [{ name: "name", color: "teal.subtle" }],
-		valueFormatter: (val) => formatMinutes(val as number),
 	});
 
 	return (
 		<BarList.Root chart={chart}>
 			<BarList.Content>
 				<BarList.Bar />
-				<BarList.Value />
+				<BarList.Value valueFormatter={(v) => formatMinutes(v as number)} />
 			</BarList.Content>
 		</BarList.Root>
 	);
