@@ -1,14 +1,15 @@
 import type { RecordEntry } from "@/pages/AddRecord";
 import { Box, IconButton, Text, Timeline, VStack } from "@chakra-ui/react";
-import { LuClipboardList, LuClock3, LuTrash2 } from "react-icons/lu";
+import { LuClipboardList, LuClock3, LuPencil, LuTrash2 } from "react-icons/lu";
 import { toaster } from "./toaster";
 
 interface TimelineViewProps {
 	items: RecordEntry[];
 	onDelete: (index: number) => void;
+	onEdit: (index: number) => void;
 }
 
-const TimelineView: React.FC<TimelineViewProps> = ({ items, onDelete }) => {
+const TimelineView: React.FC<TimelineViewProps> = ({ items, onDelete, onEdit }) => {
 	const handleDelete = (idx: number) => {
 		onDelete(idx);
 		toaster.create({
@@ -41,9 +42,14 @@ const TimelineView: React.FC<TimelineViewProps> = ({ items, onDelete }) => {
 						<VStack align="start" w="full">
 							<Box display="flex" justifyContent="space-between" w="full">
 								<Text fontWeight="medium">{item.task.taskName}</Text>
-								<IconButton size="xs" colorScheme="red" variant="ghost" aria-label="Delete" onClick={() => handleDelete(idx)}>
-									<LuTrash2 />
-								</IconButton>
+								<Box display="flex" gap={1}>
+									<IconButton size="xs" variant="ghost" aria-label="Edit" onClick={() => onEdit(idx)}>
+										<LuPencil />
+									</IconButton>
+									<IconButton size="xs" colorScheme="red" variant="ghost" aria-label="Delete" onClick={() => handleDelete(idx)}>
+										<LuTrash2 />
+									</IconButton>
+								</Box>
 							</Box>
 							<Text fontSize="sm" color="gray.500">
 								Started at {item.from}

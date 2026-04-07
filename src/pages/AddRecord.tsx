@@ -49,6 +49,7 @@ const AddRecord = () => {
 	const [tasks, setTasks] = useState<TaskItem[]>([]);
 	const [entries, setEntries] = useState<RecordEntry[]>([]);
 
+	const [editingIndex, setEditingIndex] = useState<number | null>(null);
 	const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
 	const [selectedStartTime, setSelectedStartTime] = useState<string[]>(() => [localStorage.getItem("dayStartTime") ?? "4:00"]);
 	const [selectedEndTime, setSelectedEndTime] = useState<string[]>(() => [localStorage.getItem("dayEndTime") ?? "21:00"]);
@@ -134,10 +135,20 @@ const AddRecord = () => {
 	};
 
 	const resetInputs = () => {
+		setEditingIndex(null);
 		setSelectedTaskIds([]);
 		setFromHour([]);
 		setFromMinute([]);
 		setDescription("");
+	};
+
+	const handleEdit = (index: number) => {
+		const entry = entries[index];
+		setEditingIndex(index);
+		setSelectedTaskIds([entry.task._id]);
+		setFromHour([entry.from.split(":")[0]]);
+		setFromMinute([entry.from.split(":")[1]]);
+		setDescription(entry.description ?? "");
 	};
 
 	const handleAdd = () => {
@@ -152,11 +163,15 @@ const AddRecord = () => {
 		}
 		const from = `${fromHour[0]}:${fromMinute[0]}`;
 		const newEntry: RecordEntry = { task: selectedTask, from, description };
-		saveRecordsForDate(date, [...entries, newEntry]);
+		const updatedEntries = editingIndex !== null
+			? entries.map((e, i) => (i === editingIndex ? newEntry : e))
+			: [...entries, newEntry];
+		saveRecordsForDate(date, updatedEntries);
 		resetInputs();
 	};
 
 	const handleDelete = (index: number) => {
+		resetInputs();
 		const updated = entries.filter((_, i) => i !== index);
 		saveRecordsForDate(date, updated);
 	};
@@ -324,9 +339,16 @@ const AddRecord = () => {
 						</Field.Root>
 
 						<Field.Root alignSelf="end" flex="1">
-							<Button colorScheme="blue" onClick={handleAdd}>
-								Add
-							</Button>
+							<Flex gap={2}>
+								<Button colorScheme="blue" onClick={handleAdd}>
+									{editingIndex !== null ? "Save" : "Add"}
+								</Button>
+								{editingIndex !== null && (
+									<Button variant="outline" onClick={resetInputs}>
+										Cancel
+									</Button>
+								)}
+							</Flex>
 						</Field.Root>
 					</Flex>
 				</Box>
@@ -335,7 +357,7 @@ const AddRecord = () => {
 					<Text fontWeight="semibold" mb={6} fontSize="large">
 						Records for {dayjs(date).format("DD MMM YYYY")}
 					</Text>
-					<TimelineView items={entries} onDelete={handleDelete} />
+					<TimelineView items={entries} onDelete={handleDelete} onEdit={handleEdit} />
 				</Box>
 			</VStack>
 		</Layout>
